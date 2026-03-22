@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head>s
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kind Story Dice</title>
@@ -14,7 +14,7 @@
       --accent: #7b5cff;
       --accent-2: #ffb84d;
       --selected: #fff3cf;
-      --selected-line: #f2cb64;
+      --ed-line: #f2cb64;
       --good: #1d7a46;
     }
 
@@ -79,9 +79,16 @@
 
     select {
       border: 2px solid var(--line);
-      background: white;
+      background-color: white;
       color: var(--ink);
-      padding: 14px 36px 14px 16px;
+      padding: 14px 44px 14px 16px;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236f665f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      background-size: 14px;
     }
 
     button {
