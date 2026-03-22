@@ -315,7 +315,10 @@
       <p class="subtitle">Roll soft story dice, pick your favourite choices, and build a safe story together. Start with cosy stories or fairy adventures.</p>
     </div>
 
-    <div class="controls">
+    
+      </div>
+
+      <div class="controls">
       <select id="themeSelect">
         <option value="cozy">🧁 Cozy Mode</option>
         <option value="fairy">🧚 Fairy Mode</option>
@@ -337,7 +340,7 @@
       </div>
 
       <div class="card">
-        <div class="section-label">How To Use It</div>
+        <div class="section-label">How to Play</div>
         <div class="tips">
           <p>1. Pick a mode.</p>
           <p>2. Roll one section at a time, or roll everything.</p>
@@ -579,17 +582,17 @@
       const gain = ctx.createGain();
       const filter = ctx.createBiquadFilter();
 
-      osc.type = "triangle";
+      osc.type = "sine";
       osc.frequency.setValueAtTime(pitch, now);
       osc.frequency.exponentialRampToValueAtTime(Math.max(240, pitch * 0.55), now + 0.08);
 
-      filter.type = "bandpass";
-      filter.frequency.setValueAtTime(1200, now);
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(900, now);
       filter.Q.value = 2.5;
 
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.05, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+      gain.gain.exponentialRampToValueAtTime(0.035, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
 
       osc.connect(filter);
       filter.connect(gain);
