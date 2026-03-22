@@ -182,7 +182,8 @@
       cursor: pointer;
       user-select: none;
       transform-origin: center;
-      transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease, filter 0.12s ease;
+      overflow: hidden;
     }
 
     .die:hover {
@@ -202,6 +203,21 @@
 
     .die.rolling {
       animation: wobble 0.18s linear infinite;
+      filter: saturate(1.03);
+    }
+
+    .die.landing {
+      animation: landBounce 0.36s ease-out;
+    }
+
+    .die.sparkle::after {
+      content: "✨";
+      position: absolute;
+      right: 8px;
+      top: 6px;
+      font-size: 1rem;
+      animation: sparklePop 0.55s ease-out forwards;
+      pointer-events: none;
     }
 
     .die::before {
@@ -219,6 +235,19 @@
       50% { transform: rotate(-2deg) translateY(1px); }
       75% { transform: rotate(2deg) translateY(-1px); }
       100% { transform: rotate(-3deg) translateY(0); }
+    }
+
+    @keyframes landBounce {
+      0% { transform: scale(0.94) translateY(4px); }
+      45% { transform: scale(1.05) translateY(-5px); }
+      75% { transform: scale(0.985) translateY(2px); }
+      100% { transform: scale(1) translateY(0); }
+    }
+
+    @keyframes sparklePop {
+      0% { opacity: 0; transform: scale(0.3) rotate(-20deg); }
+      35% { opacity: 1; transform: scale(1.1) rotate(8deg); }
+      100% { opacity: 0; transform: scale(1.5) translateY(-8px) rotate(18deg); }
     }
 
     .selection-box {
@@ -514,7 +543,9 @@
     const state = {
       themeKey: "cozy",
       selections: {},
-      rolledOptions: {}
+      rolledOptions: {},
+      audioEnabled: false,
+      audioContext: null
     };
 
     function currentTheme() {
@@ -531,26 +562,92 @@
       return picked;
     }
 
+    function ensureAudio() {
+      if (state.audioContext) return state.audioContext;
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return null;
+      state.audioContext = new AudioCtx();
+      return state.audioContext;
+    }
+
+    function playWoodenTick(delaySeconds = 0, pitch = 740) {
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const now = ctx.currentTime + delaySeconds;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(pitch, now);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(240, pitch * 0.55), now + 0.08);
+
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(1200, now);
+      filter.Q.value = 2.5;
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.05, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.18);
+    }
+
+    function unlockAudio() {
+      state.audioEnabled = true;
+      const ctx = ensureAudio();
+      if (ctx && ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+    }
+
     function setRollingDisplay(stageId) {
       const dice = document.querySelectorAll(`[data-stage="${stageId}"] .die`);
       const stage = currentTheme().stages.find(s => s.id === stageId);
       if (!stage) return;
+      const tempOptions = pickRandomItems(stage.choices, 4);
       dice.forEach((die, index) => {
         die.classList.add("rolling");
-        die.textContent = pickRandomItems(stage.choices, 4)[index % 4] || "?";
+        die.classList.remove("landing", "sparkle");
+        die.textContent = tempOptions[index] || "?";
       });
+      if (state.audioEnabled) {
+        const base = 560 + Math.random() * 120;
+        playWoodenTick(0, base);
+      }
     }
 
     function stopRollingDisplay(stageId, finalOptions) {
       const dice = document.querySelectorAll(`[data-stage="${stageId}"] .die`);
       dice.forEach((die, index) => {
-        die.classList.remove("rolling");
-        die.textContent = finalOptions[index] || "?";
-        die.classList.remove("selected");
+        const stopDelay = index * 120;
+        setTimeout(() => {
+          die.classList.remove("rolling", "selected", "sparkle", "landing");
+          die.textContent = finalOptions[index] || "?";
+          void die.offsetWidth;
+          die.classList.add("landing", "sparkle");
+          die.dataset.value = finalOptions[index] || "?";
+          setTimeout(() => {
+            die.classList.remove("landing");
+          }, 420);
+          setTimeout(() => {
+            die.classList.remove("sparkle");
+          }, 620);
+          if (state.audioEnabled) {
+            playWoodenTick(0, 720 - (index * 45));
+          }
+        }, stopDelay);
       });
     }
 
     function rollStage(stageId) {
+      unlockAudio();
       const stage = currentTheme().stages.find(s => s.id === stageId);
       if (!stage) return;
 
@@ -720,16 +817,10 @@
       resetForTheme();
     });
 
-    document.getElementById("rollAllBtn").addEventListener("click", rollAllStages);
-
-    const originalStopRollingDisplay = stopRollingDisplay;
-    stopRollingDisplay = function(stageId, finalOptions) {
-      originalStopRollingDisplay(stageId, finalOptions);
-      const dice = document.querySelectorAll(`#dice-${stageId} .die`);
-      dice.forEach((die, index) => {
-        die.dataset.value = finalOptions[index] || "?";
-      });
-    };
+    document.getElementById("rollAllBtn").addEventListener("click", () => {
+      unlockAudio();
+      rollAllStages();
+    });
 
     resetForTheme();
     renderSummary();
